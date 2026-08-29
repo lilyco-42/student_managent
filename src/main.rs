@@ -1,6 +1,11 @@
-use std::collections::{HashMap, HashSet};
-
+use axum::extract::State;
+use axum::response::Json;
 use axum::routing::get;
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 #[tokio::main]
 async fn main() {
     let (mut 小红, mut 小明, mut 小王) = (学生::new(), 学生::new(), 学生::new());
@@ -17,21 +22,25 @@ async fn main() {
         .添加学科(vec!["数学".to_string(), "英语".to_string()]); // "数学" 不会重复
 
     let 学生列表 = vec![小红, 小明, 小王];
-
-    let 端口 = tokio::net::TcpListener::bind("127.0.0.1:3000")
+    // dbg!(&学生列表);
+    let 监听器 = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
         .unwrap();
 
-    let 路由 = axum::Router::new().route("/", get(get学生列表()));
+    let 路由 = axum::Router::new()
+        .route("/", get(获取学生列表))
+        .with_state(学生列表);
+
+    axum::serve(监听器, 路由).await.unwrap();
+}
+// 处理函数：通过 State 提取共享的学生列表，返回 JSON
+//
+
+async fn 获取学生列表(State(数据): State<Vec<学生>>) -> Json<Vec<学生>> {
+    Json(数据)
 }
 
-async fn get学生列表(学生列表: Vec<学生>) {
-    for 学生 in 学生列表 {
-        println!("{:#?}", 学生);
-    }
-}
-
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 struct 学生 {
     姓名: String,
     年龄: u8,
